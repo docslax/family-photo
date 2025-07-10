@@ -1,0 +1,133 @@
+<h2>Gallery</h2>
+<div class="gallery">
+  <% media.forEach(item => { %>
+    <div class="media-item">
+      <% if (item.type === 'image') { %>
+        <img src="/uploads/<%= item.filename %>" />
+      <% } else { %>
+        <video src="/uploads/<%= item.filename %>" controls></video>
+      <% } %>
+      <p><%= item.description %></p>
+      <div class="media-footer">
+        <a href="/uploads/<%= item.filename %>" download>Download</a>
+        <div class="reaction-bar" data-filename="<%= item.filename %>">
+          <% const reacts = reactions[item.filename] || {}; %>
+          <% const emojis = ['👍','❤️','😂','😮']; %>
+          <% emojis.forEach(emoji => { %>
+            <button class="reaction-btn" data-emoji="<%= emoji %>">
+              <%= emoji %> <span><%= reacts[emoji]?.count || 0 %></span>
+            </button>
+          <% }) %>
+        </div>
+      </div>      
+    </div>
+  <% }) %>
+</div>
+<div class="modal" id="mediaModal">
+  <span class="modal-close" id="modalClose">&times;</span>
+  <span class="modal-arrow modal-prev" id="modalPrev">&#10094;</span>
+  <span class="modal-arrow modal-next" id="modalNext">&#10095;</span>
+  
+  <div class="modal-inner">
+    <div class="modal-content" id="modalContent"></div>
+    <div class="modal-caption-bar">
+      <p id="modalCaption"></p>
+    </div>
+  </div>
+</div>
+  
+<script>
+  const modal = document.getElementById('mediaModal');
+  const modalContent = document.getElementById('modalContent');
+  const modalClose = document.getElementById('modalClose');
+  const modalPrev = document.getElementById('modalPrev');
+  const modalNext = document.getElementById('modalNext');
+  const modalCaption = document.getElementById('modalCaption');
+
+  const mediaItems = Array.from(document.querySelectorAll('.media-item'));
+  const mediaElements = mediaItems.map(item => item.querySelector('img, video'));
+  const captions = mediaItems.map(item => item.querySelector('p')?.innerText || '');
+
+  let currentIndex = -1;
+
+  function showMedia(index) {
+    const el = mediaElements[index];
+    const caption = captions[index];
+    if (!el) return;
+
+    const isVideo = el.tagName === 'VIDEO';
+    const mediaHTML = isVideo
+      ? `<video src="${el.src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`
+      : `<img src="${el.src}" style="max-width:100%;max-height:90vh;" />`;
+
+    modalContent.innerHTML = mediaHTML;
+    modalCaption.textContent = caption;
+    currentIndex = index;
+    modal.style.display = 'flex';
+  }
+
+  mediaElements.forEach((el, i) => {
+    el.addEventListener('click', () => showMedia(i));
+  });
+
+  modalClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  modalPrev.addEventListener('click', () => {
+    const prev = (currentIndex - 1 + mediaElements.length) % mediaElements.length;
+    showMedia(prev);
+  });
+
+  modalNext.addEventListener('click', () => {
+    const next = (currentIndex + 1) % mediaElements.length;
+    showMedia(next);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (modal.style.display !== 'flex') return;
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'ArrowLeft') modalPrev.click();
+    if (e.key === 'ArrowRight') modalNext.click();
+  });
+
+  function closeModal() {
+    modal.style.display = 'none';
+    modalContent.innerHTML = '';
+    modalCaption.textContent = '';
+    currentIndex = -1;
+  }
+</script>
+<script>
+  function getUuid() {
+    let id = localStorage.getItem("photoViewerId");
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem("photoViewerId", id);
+    }
+    return id;
+  }
+  
+  document.querySelectorAll(".reaction-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const emoji = btn.dataset.emoji;
+      const container = btn.closest(".reaction-bar");
+      const filename = container.dataset.filename;
+      const uuid = getUuid();
+  
+      const res = await fetch("/react", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename, emoji, uuid }),
+      });
+  
+      const data = await res.json();
+      if (data.count !== undefined) {
+        btn.querySelector("span").textContent = data.count;
+        btn.disabled = true; // optional: disable after click
+      }
+    });
+  });
+  </script>
+  

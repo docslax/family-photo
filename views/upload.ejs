@@ -1,0 +1,98 @@
+<h2>Upload Media</h2>
+<p>
+  This can be pictures, gifs or videos.
+  <br />After you select your media, you can add descriptions before you upload
+  them.
+</p>
+<form
+  id="uploadForm"
+  action="/upload"
+  method="POST"
+  enctype="multipart/form-data"
+>
+  <input
+    type="file"
+    id="mediaInput"
+    name="media"
+    multiple
+    required
+    accept="image/*,video/*"
+  /><br /><br />
+  <div id="previewList"></div>
+  <div style="margin-top: 20px;">
+    <button id="submitBtn" type="submit" class="button primary">Upload</button>
+    <a href="/" class="button cancel">Cancel</a>
+  </div>
+  <p id="statusMsg" style="margin-top: 10px; font-style: italic;"></p>
+</form>
+<script>
+  const input = document.getElementById("mediaInput");
+  const previewList = document.getElementById("previewList");
+  const form = document.getElementById("uploadForm");
+
+  let selectedFiles = [];
+
+  input.addEventListener("change", () => {
+    const newFiles = Array.from(input.files);
+    // initialize with empty descriptions
+    selectedFiles = newFiles.map((file) => ({ file, description: "" }));
+    renderPreview();
+  });
+
+  function renderPreview() {
+    previewList.innerHTML = "";
+
+    selectedFiles.forEach((entry, i) => {
+      const div = document.createElement("div");
+      div.style.marginBottom = "10px";
+
+      const label = document.createElement("label");
+      label.textContent = `Description for: ${entry.file.name}`;
+
+      const textarea = document.createElement("textarea");
+      textarea.name = "description[]";
+      textarea.rows = 2;
+      textarea.cols = 40;
+      textarea.required = true;
+      textarea.value = entry.description;
+
+      textarea.addEventListener("input", () => {
+        selectedFiles[i].description = textarea.value;
+      });
+
+      const remove = document.createElement("button");
+      remove.textContent = "❌";
+      remove.type = "button";
+      remove.style.marginLeft = "10px";
+      remove.onclick = () => {
+        selectedFiles.splice(i, 1);
+        renderPreview();
+      };
+
+      div.appendChild(label);
+      div.appendChild(remove);
+      div.appendChild(document.createElement("br"));
+      div.appendChild(textarea);
+      previewList.appendChild(div);
+    });
+
+    // rebuild the input.files with updated selectedFiles
+    const dataTransfer = new DataTransfer();
+    selectedFiles.forEach((entry) => dataTransfer.items.add(entry.file));
+    input.files = dataTransfer.files;
+  }
+
+  function clearForm() {
+    selectedFiles = [];
+    input.value = "";
+    previewList.innerHTML = "";
+  }
+
+  const submitBtn = document.getElementById('submitBtn');
+  const statusMsg = document.getElementById('statusMsg');
+
+  form.addEventListener('submit', () => {
+    submitBtn.disabled = true;
+    statusMsg.textContent = 'Uploading and converting files… please wait.';
+  });
+</script>
